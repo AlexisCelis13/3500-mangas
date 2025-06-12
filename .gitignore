@@ -1,0 +1,86 @@
+# .NET Core
+## Generic
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+.vscode/
+*.suo
+*.user
+*.aps
+*.log
+*.docstates
+*.bak
+*.sbr
+*.pch
+*.pdb
+*.idb
+*.res
+*.lib
+*.ncb
+*.ide
+*.dll
+*.exe
+*.pdb
+*.sdf
+*.cache
+*.vsthost
+*.testresults
+*.fs
+*.fsi
+*.fsproj
+*.fsproj.user
+*.fsproj.filtered
+*.dbmdl
+*.publish
+*.vsp
+*.vssscc
+*.vspscc
+*.vsi
+*.webtest
+*.xaml
+*.xpt
+*.xps
+*.psess
+*.tlog
+*.temp.json
+*.tmp
+*.vsdps
+*.vspscc
+*.vsscc
+*.gitignored
+## Build results
+[Dd]ebug/
+[Rr]elease/
+*.pdb
+*.suo
+*.user
+*.aps
+*.log
+*.bak
+## Visual Studio specific
+*.suo
+*.user
+*.aps
+*.log
+*.bak
+*.vspscc
+*.vsscc
+*.vssscc
+*.vstf
+*.vspscc
+*.local
+## NuGet packages
+[Pp]ackages/
+*.nupkg
+## Visual Studio Code specific
+.vscode/
+
+# Azure Machine Learning Assets
+mlruns/
+.mlflow/
+
+# C# specific
+*.resharper
+*.DotSettings

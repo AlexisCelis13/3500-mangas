@@ -1,0 +1,6 @@
+@MiMangaBot_HostAddress = http://localhost:5127
+
+GET {{MiMangaBot_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
