@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MiMangaBot.Domain.Models;
 
-namespace MiMangaBot.Domain.Data;
+namespace MiMangaBot.Data;
 
 public class ApplicationDbContext : DbContext
 {

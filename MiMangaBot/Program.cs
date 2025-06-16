@@ -1,8 +1,10 @@
 // JaveragesLibrary/Program.cs
 
 using Microsoft.EntityFrameworkCore;
-using MiMangaBot.Domain.Data;
+using MiMangaBot.Data;
 using MiMangaBot.Services;
+using MiMangaBot.Domain.Repositories;
+using MiMangaBot.Infrastructure.Repositories;
 using FirebaseAdmin;
 using Google.Cloud.Firestore;
 using Microsoft.OpenApi.Models;
@@ -44,6 +46,7 @@ if (FirebaseApp.DefaultInstance == null)
 }
 
 // Registrar servicios
+builder.Services.AddScoped<IMangaRepository, FirestoreMangaRepository>();
 builder.Services.AddScoped<MangaGeneratorService>();
 
 // Configurar Swagger

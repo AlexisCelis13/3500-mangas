@@ -50,9 +50,24 @@ public class MangaGeneratorController : ControllerBase
     {
         try
         {
-            // Aquí podrías implementar una lógica para verificar el estado de la generación
-            // Por ejemplo, contar cuántos mangas hay en la base de datos
-            return Ok(new { message = "Servicio de generación de mangas activo" });
+            _logger.LogInformation("Solicitud para obtener el estado de generación de mangas.");
+            var allMangas = await _mangaGeneratorService.GetAllMangasAsync();
+            var duplicates = await _mangaGeneratorService.GetDuplicateMangasAsync();
+
+            return Ok(new 
+            { 
+                message = "Servicio de generación de mangas activo",
+                totalMangas = allMangas.Count,
+                mangasDuplicados = duplicates.Count,
+                ultimaActualizacion = allMangas.Max(m => m.FechaActualizacion ?? m.FechaCreacion),
+                estado = new
+                {
+                    totalGeneros = allMangas.Select(m => m.Genero).Distinct().Count(),
+                    totalEditoriales = allMangas.Select(m => m.Editorial).Distinct().Count(),
+                    mangasEnPublicacion = allMangas.Count(m => m.EnPublicacion),
+                    mangasFinalizados = allMangas.Count(m => m.Estado == "Finalizado")
+                }
+            });
         }
         catch (Exception ex)
         {

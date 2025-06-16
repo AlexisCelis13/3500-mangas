@@ -1,6 +1,6 @@
 using Bogus;
-using Google.Cloud.Firestore;
 using MiMangaBot.Domain.Models;
+using MiMangaBot.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace MiMangaBot.Services;
@@ -8,14 +8,14 @@ namespace MiMangaBot.Services;
 public class MangaGeneratorService
 {
     private const int MAX_ATTEMPTS_MULTIPLIER = 2;
-    private readonly FirestoreDb _firestoreDb;
+    private readonly IMangaRepository _mangaRepository;
     private readonly ILogger<MangaGeneratorService> _logger;
     private readonly Faker<Manga> _mangaFaker;
     private readonly HashSet<string> _generatedTitles = new();
 
-    public MangaGeneratorService(FirestoreDb firestoreDb, ILogger<MangaGeneratorService> logger)
+    public MangaGeneratorService(IMangaRepository mangaRepository, ILogger<MangaGeneratorService> logger)
     {
-        _firestoreDb = firestoreDb;
+        _mangaRepository = mangaRepository;
         _logger = logger;
 
         var generos = new[] { "Shonen", "Seinen", "Shojo", "Josei", "Mecha", "Fantasy", "Romance", "Comedy", "Drama", "Action", "Horror", "Misterio", "Deportes", "Musical", "Histórico" };
@@ -53,43 +53,39 @@ public class MangaGeneratorService
     public async Task<List<Manga>> GenerateAndStoreMangasAsync(int count)
     {
         var mangas = new List<Manga>();
-        var batch = _firestoreDb.StartBatch();
-        var collection = _firestoreDb.Collection("mangas");
         var existingTitles = await GetExistingTitlesAsync();
 
         int generated = 0;
         int attempts = 0;
-        int maxAttempts = count * MAX_ATTEMPTS_MULTIPLIER; // Permitimos algunos intentos extra para manejar colisiones
+        int maxAttempts = count * MAX_ATTEMPTS_MULTIPLIER;
 
         while (generated < count && attempts < maxAttempts)
         {
             attempts++;
             var manga = _mangaFaker.Generate();
 
-            // Verificar si el título ya existe en la base de datos
-            if (existingTitles.Contains(manga.TituloNormalizado))
+            if (await _mangaRepository.ExistsByTitleAsync(manga.Titulo))
             {
                 _logger.LogWarning($"Título duplicado encontrado: {manga.Titulo}");
                 continue;
             }
 
             mangas.Add(manga);
-            batch.Set(collection.Document(manga.Id), manga);
             generated++;
 
-            // Commit cada 500 mangas para evitar lotes demasiado grandes
-            if (generated % 500 == 0)
+            // Agregar en lotes de 500 para mejor rendimiento
+            if (mangas.Count >= 500)
             {
-                await batch.CommitAsync();
-                batch = _firestoreDb.StartBatch();
+                await _mangaRepository.AddRangeAsync(mangas);
+                mangas.Clear();
                 _logger.LogInformation($"Generados y almacenados {generated} mangas");
             }
         }
 
-        // Commit final si quedan mangas pendientes
-        if (generated % 500 != 0)
+        // Agregar los mangas restantes
+        if (mangas.Any())
         {
-            await batch.CommitAsync();
+            await _mangaRepository.AddRangeAsync(mangas);
         }
 
         _logger.LogInformation($"Generación completada. Total de mangas generados: {generated} de {count} solicitados");
@@ -98,60 +94,22 @@ public class MangaGeneratorService
 
     private async Task<HashSet<string>> GetExistingTitlesAsync()
     {
-        var titles = new HashSet<string>();
-        var snapshot = await _firestoreDb.Collection("mangas").GetSnapshotAsync();
-        
-        foreach (var doc in snapshot.Documents)
-        {
-            var manga = doc.ConvertTo<Manga>();
-            titles.Add(manga.TituloNormalizado);
-        }
-
-        return titles;
+        var allMangas = await _mangaRepository.GetAllAsync();
+        return new HashSet<string>(allMangas.Select(m => m.TituloNormalizado));
     }
 
     public async Task<List<Manga>> GetAllMangasAsync()
     {
-        var mangas = new List<Manga>();
-        var snapshot = await _firestoreDb.Collection("mangas").GetSnapshotAsync();
-        
-        foreach (var doc in snapshot.Documents)
-        {
-            var manga = doc.ConvertTo<Manga>();
-            mangas.Add(manga);
-        }
-
-        _logger.LogInformation($"Recuperados {mangas.Count} mangas de Firestore.");
-        return mangas;
+        return await _mangaRepository.GetAllAsync();
     }
 
     public async Task<Dictionary<string, List<Manga>>> GetDuplicateMangasAsync()
     {
-        _logger.LogInformation("Buscando mangas duplicados.");
-        var allMangas = await GetAllMangasAsync();
-
-        var duplicates = allMangas
-            .GroupBy(m => m.TituloNormalizado)
-            .Where(g => g.Count() > 1)
-            .ToDictionary(g => g.Key!, g => g.ToList());
-
-        _logger.LogInformation($"Encontrados {duplicates.Count} grupos de mangas duplicados.");
-        return duplicates;
+        return await _mangaRepository.GetDuplicatesAsync();
     }
 
     public async Task<bool> DeleteMangaAsync(string id)
     {
-        try
-        {
-            var docRef = _firestoreDb.Collection("mangas").Document(id);
-            await docRef.DeleteAsync();
-            _logger.LogInformation($"Manga con ID {id} eliminado exitosamente de Firestore.");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Error al eliminar manga con ID {id} de Firestore.");
-            return false;
-        }
+        return await _mangaRepository.DeleteAsync(id);
     }
 } 
